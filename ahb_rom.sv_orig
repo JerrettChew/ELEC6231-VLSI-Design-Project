@@ -1,0 +1,311 @@
+// Example code for an AHBLite System-on-Chip
+//  Iain McNally
+//  ECS, University of Soutampton
+//
+// This module is an AHB-Lite Slave containing a ROM
+//
+// Number of addressable locations : 2**MEMWIDTH
+// Size of each addressable location : 8 bits
+// Supported transfer sizes : Word, Halfword, Byte
+// Alignment of base address : Word aligned
+//
+
+`ifdef PROG_FILE_VMEM
+  // already defined - do nothing
+`else
+  `define PROG_FILE_VMEM  "code.vmem"
+`endif
+
+module ahb_rom #(
+  parameter MEMWIDTH = 14
+)(
+  //AHBLITE INTERFACE
+
+    //Slave Select Signal
+    input HSEL,
+    //Global Signals
+    input HCLK,
+    input HRESETn,
+    //Address, Control & Write Data
+    input HREADY,
+    input [31:0] HADDR,
+    input [1:0] HTRANS,
+    input HWRITE,
+    input [2:0] HSIZE,
+    input [31:0] HWDATA,
+    // Transfer Response & Read Data
+    output HREADYOUT,
+    output [31:0] HRDATA
+
+);
+
+timeunit 1ns;
+timeprecision 100ps;
+
+  localparam No_Transfer = 2'b0;
+
+// Memory Array  
+  logic [31:0] memory[0:(2**(MEMWIDTH-2)-1)];
+
+//control signals are stored in registers
+  logic read_enable;
+  logic [MEMWIDTH-3:0] word_address;
+  logic [3:0] byte_select;
+  
+
+// BEGIN CUSTOM
+
+  assign memory[ 0 ] = 32'h20000100;
+  assign memory[ 1 ] = 32'h000000C1;
+  assign memory[ 2 ] = 32'h00000121;
+  assign memory[ 3 ] = 32'h00000125;
+  assign memory[ 4 ] = 32'h00000129;
+  assign memory[ 5 ] = 32'h0000012D;
+  assign memory[ 6 ] = 32'h00000131;
+  assign memory[ 7 ] = 32'h00000000;
+  assign memory[ 8 ] = 32'h00000000;
+  assign memory[ 9 ] = 32'h00000000;
+  assign memory[ 10 ] = 32'h00000000;
+  assign memory[ 11 ] = 32'h00000135;
+  assign memory[ 12 ] = 32'h00000139;
+  assign memory[ 13 ] = 32'h00000000;
+  assign memory[ 14 ] = 32'h0000013D;
+  assign memory[ 15 ] = 32'h00000189;
+  assign memory[ 16 ] = 32'h00000145;
+  assign memory[ 17 ] = 32'h00000145;
+  assign memory[ 18 ] = 32'h00000145;
+  assign memory[ 19 ] = 32'h00000145;
+  assign memory[ 20 ] = 32'h00000145;
+  assign memory[ 21 ] = 32'h00000145;
+  assign memory[ 22 ] = 32'h00000145;
+  assign memory[ 23 ] = 32'h00000145;
+  assign memory[ 24 ] = 32'h00000145;
+  assign memory[ 25 ] = 32'h00000145;
+  assign memory[ 26 ] = 32'h00000145;
+  assign memory[ 27 ] = 32'h00000145;
+  assign memory[ 28 ] = 32'h00000145;
+  assign memory[ 29 ] = 32'h00000149;
+  assign memory[ 30 ] = 32'h0000014D;
+  assign memory[ 31 ] = 32'h00000151;
+  assign memory[ 32 ] = 32'h00000155;
+  assign memory[ 33 ] = 32'h00000159;
+  assign memory[ 34 ] = 32'h0000015D;
+  assign memory[ 35 ] = 32'h00000161;
+  assign memory[ 36 ] = 32'h00000165;
+  assign memory[ 37 ] = 32'h00000169;
+  assign memory[ 38 ] = 32'h00000000;
+  assign memory[ 39 ] = 32'h00000000;
+  assign memory[ 40 ] = 32'h0000016D;
+  assign memory[ 41 ] = 32'h00000171;
+  assign memory[ 42 ] = 32'h00000175;
+  assign memory[ 43 ] = 32'h00000000;
+  assign memory[ 44 ] = 32'h00000179;
+  assign memory[ 45 ] = 32'h0000017D;
+  assign memory[ 46 ] = 32'h00000181;
+  assign memory[ 47 ] = 32'h00000185;
+  assign memory[ 48 ] = 32'hB083B500;
+  assign memory[ 49 ] = 32'h93004B11;
+  assign memory[ 50 ] = 32'h93014B11;
+  assign memory[ 51 ] = 32'h9B019A00;
+  assign memory[ 52 ] = 32'hD00C429A;
+  assign memory[ 53 ] = 32'h9B01E007;
+  assign memory[ 54 ] = 32'h92011D1A;
+  assign memory[ 55 ] = 32'h1D119A00;
+  assign memory[ 56 ] = 32'h68129100;
+  assign memory[ 57 ] = 32'h9A01601A;
+  assign memory[ 58 ] = 32'h429A4B0A;
+  assign memory[ 59 ] = 32'h4B0AD3F3;
+  assign memory[ 60 ] = 32'hE0049301;
+  assign memory[ 61 ] = 32'h1D1A9B01;
+  assign memory[ 62 ] = 32'h22009201;
+  assign memory[ 63 ] = 32'h9A01601A;
+  assign memory[ 64 ] = 32'h429A4B06;
+  assign memory[ 65 ] = 32'hF000D3F6;
+  assign memory[ 66 ] = 32'hE7FEF8D9;
+  assign memory[ 67 ] = 32'h00000328;
+  assign memory[ 68 ] = 32'h20000000;
+  assign memory[ 69 ] = 32'h20000008;
+  assign memory[ 70 ] = 32'h20000008;
+  assign memory[ 71 ] = 32'h2000000C;
+  assign memory[ 72 ] = 32'h46C0E7FE;
+  assign memory[ 73 ] = 32'h46C0E7FE;
+  assign memory[ 74 ] = 32'h46C0E7FE;
+  assign memory[ 75 ] = 32'h46C0E7FE;
+  assign memory[ 76 ] = 32'h46C0E7FE;
+  assign memory[ 77 ] = 32'h46C0E7FE;
+  assign memory[ 78 ] = 32'h46C0E7FE;
+  assign memory[ 79 ] = 32'h46C0E7FE;
+  assign memory[ 80 ] = 32'h46C0E7FE;
+  assign memory[ 81 ] = 32'h46C0E7FE;
+  assign memory[ 82 ] = 32'h46C0E7FE;
+  assign memory[ 83 ] = 32'h46C0E7FE;
+  assign memory[ 84 ] = 32'h46C0E7FE;
+  assign memory[ 85 ] = 32'h46C0E7FE;
+  assign memory[ 86 ] = 32'h46C0E7FE;
+  assign memory[ 87 ] = 32'h46C0E7FE;
+  assign memory[ 88 ] = 32'h46C0E7FE;
+  assign memory[ 89 ] = 32'h46C0E7FE;
+  assign memory[ 90 ] = 32'h46C0E7FE;
+  assign memory[ 91 ] = 32'h46C0E7FE;
+  assign memory[ 92 ] = 32'h46C0E7FE;
+  assign memory[ 93 ] = 32'h46C0E7FE;
+  assign memory[ 94 ] = 32'h46C0E7FE;
+  assign memory[ 95 ] = 32'h46C0E7FE;
+  assign memory[ 96 ] = 32'h46C0E7FE;
+  assign memory[ 97 ] = 32'h46C0E7FE;
+  assign memory[ 98 ] = 32'h681B4B03;
+  assign memory[ 99 ] = 32'h4B021C5A;
+  assign memory[ 100 ] = 32'h46C0601A;
+  assign memory[ 101 ] = 32'h46C04770;
+  assign memory[ 102 ] = 32'h20000008;
+  assign memory[ 103 ] = 32'h9001B082;
+  assign memory[ 104 ] = 32'h9A014B06;
+  assign memory[ 105 ] = 32'h605A3A01;
+  assign memory[ 106 ] = 32'h22004B04;
+  assign memory[ 107 ] = 32'h4B03609A;
+  assign memory[ 108 ] = 32'h601A2207;
+  assign memory[ 109 ] = 32'hB00246C0;
+  assign memory[ 110 ] = 32'h46C04770;
+  assign memory[ 111 ] = 32'hE000E010;
+  assign memory[ 112 ] = 32'h9001B084;
+  assign memory[ 113 ] = 32'h681B4B06;
+  assign memory[ 114 ] = 32'h9B019303;
+  assign memory[ 115 ] = 32'hD0022B00;
+  assign memory[ 116 ] = 32'h9A039B01;
+  assign memory[ 117 ] = 32'h9B03601A;
+  assign memory[ 118 ] = 32'hB0040018;
+  assign memory[ 119 ] = 32'h46C04770;
+  assign memory[ 120 ] = 32'h20000008;
+  assign memory[ 121 ] = 32'h9001B082;
+  assign memory[ 122 ] = 32'h681B4B05;
+  assign memory[ 123 ] = 32'h22013304;
+  assign memory[ 124 ] = 32'h4B03601A;
+  assign memory[ 125 ] = 32'h9A01681B;
+  assign memory[ 126 ] = 32'h46C0601A;
+  assign memory[ 127 ] = 32'h4770B002;
+  assign memory[ 128 ] = 32'h20000004;
+  assign memory[ 129 ] = 32'h681B4B05;
+  assign memory[ 130 ] = 32'h22003304;
+  assign memory[ 131 ] = 32'h4B03601A;
+  assign memory[ 132 ] = 32'h2200681B;
+  assign memory[ 133 ] = 32'h46C0601A;
+  assign memory[ 134 ] = 32'h46C04770;
+  assign memory[ 135 ] = 32'h20000004;
+  assign memory[ 136 ] = 32'h681B4B02;
+  assign memory[ 137 ] = 32'h0018681B;
+  assign memory[ 138 ] = 32'h46C04770;
+  assign memory[ 139 ] = 32'h20000004;
+  assign memory[ 140 ] = 32'h9001B082;
+  assign memory[ 141 ] = 32'h681A4B04;
+  assign memory[ 142 ] = 32'h009B9B01;
+  assign memory[ 143 ] = 32'h681B18D3;
+  assign memory[ 144 ] = 32'hB0020018;
+  assign memory[ 145 ] = 32'h46C04770;
+  assign memory[ 146 ] = 32'h20000000;
+  assign memory[ 147 ] = 32'h9001B084;
+  assign memory[ 148 ] = 32'h681B4B09;
+  assign memory[ 149 ] = 32'h681B3308;
+  assign memory[ 150 ] = 32'h9A039303;
+  assign memory[ 151 ] = 32'h411A9B01;
+  assign memory[ 152 ] = 32'h22010013;
+  assign memory[ 153 ] = 32'h93024013;
+  assign memory[ 154 ] = 32'h3B019B02;
+  assign memory[ 155 ] = 32'h4153425A;
+  assign memory[ 156 ] = 32'h0018B2DB;
+  assign memory[ 157 ] = 32'h4770B004;
+  assign memory[ 158 ] = 32'h20000000;
+  assign memory[ 159 ] = 32'h4B0446C0;
+  assign memory[ 160 ] = 32'h3308681B;
+  assign memory[ 161 ] = 32'h2B00681B;
+  assign memory[ 162 ] = 32'h46C0D0F9;
+  assign memory[ 163 ] = 32'h46C04770;
+  assign memory[ 164 ] = 32'h20000000;
+  assign memory[ 165 ] = 32'hB083B500;
+  assign memory[ 166 ] = 32'h9B019001;
+  assign memory[ 167 ] = 32'hD1012B00;
+  assign memory[ 168 ] = 32'hE0072301;
+  assign memory[ 169 ] = 32'h3B019B01;
+  assign memory[ 170 ] = 32'hF7FF0018;
+  assign memory[ 171 ] = 32'h0002FFF3;
+  assign memory[ 172 ] = 32'h43539B01;
+  assign memory[ 173 ] = 32'hB0030018;
+  assign memory[ 174 ] = 32'h46C0BD00;
+  assign memory[ 175 ] = 32'h4B17B510;
+  assign memory[ 176 ] = 32'hF7FF0018;
+  assign memory[ 177 ] = 32'h4B16FF6B;
+  assign memory[ 178 ] = 32'hF7FF0018;
+  assign memory[ 179 ] = 32'hF7FFFF8B;
+  assign memory[ 180 ] = 32'h0003FFA7;
+  assign memory[ 181 ] = 32'h0018005B;
+  assign memory[ 182 ] = 32'hFF84F7FF;
+  assign memory[ 183 ] = 32'hFFA0F7FF;
+  assign memory[ 184 ] = 32'h085B0003;
+  assign memory[ 185 ] = 32'hF7FF0018;
+  assign memory[ 186 ] = 32'h2301FF7D;
+  assign memory[ 187 ] = 32'h0018425B;
+  assign memory[ 188 ] = 32'hFF78F7FF;
+  assign memory[ 189 ] = 32'hF7FF2000;
+  assign memory[ 190 ] = 32'h0003FF63;
+  assign memory[ 191 ] = 32'hF7FF0018;
+  assign memory[ 192 ] = 32'h4B08FF71;
+  assign memory[ 193 ] = 32'hF7FF0018;
+  assign memory[ 194 ] = 32'h2000FF6D;
+  assign memory[ 195 ] = 32'hFF58F7FF;
+  assign memory[ 196 ] = 32'h00180003;
+  assign memory[ 197 ] = 32'hFF66F7FF;
+  assign memory[ 198 ] = 32'h46C0E7F7;
+  assign memory[ 199 ] = 32'h0000C350;
+  assign memory[ 200 ] = 32'h55555555;
+  assign memory[ 201 ] = 32'h11111111;
+  assign memory[ 202 ] = 32'h40000000;
+  assign memory[ 203 ] = 32'h50000000;
+
+// END CUSTOM
+ 
+//Generate the control signals in the address phase
+  always_ff @(posedge HCLK, negedge HRESETn)
+    if (! HRESETn )
+      begin
+        read_enable <= '0;
+        word_address <= '0;
+        byte_select <= '0;
+      end
+    else if ( HREADY && HSEL && (HTRANS != No_Transfer) )
+      begin
+        read_enable <= ! HWRITE;
+        word_address <= HADDR[MEMWIDTH-1:2];
+        byte_select <= generate_byte_select( HSIZE, HADDR[1:0] );
+     end
+    else
+      begin
+        read_enable <= '0;
+        word_address <= '0;
+        byte_select <= '0;
+     end
+
+//Act on control signals in the data phase
+
+  // no write since this is a ROM
+
+  //read
+  // (output of zero when not enabled for read is not necessary but may help with debugging)
+  assign HRDATA[ 7: 0] = ( read_enable && byte_select[0] ) ? memory[word_address][ 7: 0] : '0;
+  assign HRDATA[15: 8] = ( read_enable && byte_select[1] ) ? memory[word_address][15: 8] : '0;
+  assign HRDATA[23:16] = ( read_enable && byte_select[2] ) ? memory[word_address][23:16] : '0;
+  assign HRDATA[31:24] = ( read_enable && byte_select[3] ) ? memory[word_address][31:24] : '0;
+
+//Transfer Response
+  assign HREADYOUT = '1; //Single cycle Write & Read. Zero Wait state operations
+
+
+// decode byte select signals from the size and the lowest two address bits
+  function logic [3:0] generate_byte_select( logic [2:0] size, logic [1:0] byte_adress );
+    logic byte3, byte2, byte1, byte0;
+    byte0 = size[1] || ( byte_adress == 0 );
+    byte1 = size[1] || ( size[0] && ( byte_adress == 0 ) ) || ( byte_adress == 1 );
+    byte2 = size[1] || ( byte_adress == 2 );
+    byte3 = size[1] || ( size[0] && ( byte_adress == 2 ) ) || ( byte_adress == 3 );
+    return { byte3, byte2, byte1, byte0 };
+  endfunction
+
+endmodule
